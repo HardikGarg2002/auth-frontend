@@ -7,29 +7,55 @@ import {
 } from "@tabler/icons-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {z} from "zod";
+import { error } from "console";
 
-export default function SignupForm() {
-  const handleSubmit = async (formdata: any) => {
+export default async function SignupForm() {
+  
+  const handleSubmit = async (formdata: FormData) => {
     "use server";
-    console.log("Form submitted", formdata);
+    console.log('formsubmitted')
+    const userZodSchema = z.object({
+      email:z.coerce.string().email().min(5),
+      password: z.string().min(4),
+      confirmPassword: z.string().min(4),
+    }).superRefine(({ confirmPassword, password }, ctx) => {
+    if (confirmPassword !== password) {
+      ctx.addIssue({
+        code: "custom",
+        message: "The passwords did not match"
+      });
+    }
+    })
+    const userInput = {
+      email:formdata.get('email'),
+      password:formdata.get('password'),
+      confirmPassword:formdata.get('confirm_password')
+    }
+    const result= userZodSchema.safeParse(userInput);
+    // const errors = !result.success ? result.error?.flatten().fieldErrors:{}
+    if (!result.success) {
+      return {
+        errors: result.error.flatten().fieldErrors,
+      }
+    }
+    // console.log('errors in the submission ',errors)
   };
   return (
     <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-white dark:bg-black">
       <h2 className="font-bold text-xl text-neutral-800 dark:text-neutral-200">
         Welcome to Hirestud
       </h2>
-      <p className="text-neutral-600 text-sm max-w-sm mt-2 dark:text-neutral-300">
-        Login to aceternity if you can because we don&apos;t have a login flow
-        yet
-      </p>
-
-      <form className="my-8  " action={handleSubmit}>
+      <form className="my-8  " action={async(formdata)=>{
+        console.log('im in client ');
+        const errors = await handleSubmit(formdata);
+        }}>
         <div className="p-5 border border-gray-200 rounded-3xl shadow-sm">
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mb-4 ">
             <LabelInputContainer>
               <Input
                 id="firstname"
-                name="name"
+                name="firstname"
                 placeholder="Enter first name"
                 type="text"
               />
@@ -37,7 +63,7 @@ export default function SignupForm() {
             <LabelInputContainer>
               <Input
                 id="lastname"
-                name=""
+                name="lastname"
                 placeholder="Enter last name"
                 type="text"
               />
